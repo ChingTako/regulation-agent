@@ -2,7 +2,7 @@ import os
 import requests
 
 BOT_TOKEN = os.environ["8958313466:AAE9tVCNlISwY6-3GsnyMFEiDvP35SENU4E"]
-CHAT_ID = os.environ["8546764711"]
+CHAT_ID = os.environ["8958313466"]
 
 def send_telegram(text):
 
