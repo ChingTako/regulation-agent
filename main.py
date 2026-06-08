@@ -1,3 +1,6 @@
+import notifier.telegram as tg
+
+print("TELEGRAM FILE PATH:", tg.__file__)
 print("IMPORT:", send_telegram)
 from crawler.fda import fetch_fda
 from db.database import init_db, insert_regulation
