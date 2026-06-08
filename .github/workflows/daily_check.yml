@@ -1,0 +1,32 @@
+name: Daily Regulation Check
+
+on:
+  schedule:
+    # 每天 UTC 00:00 執行（Taiwan 時間 08:00）
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 手動觸發
+
+jobs:
+  check-regulations:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run regulation check
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          python main.py
