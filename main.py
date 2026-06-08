@@ -66,7 +66,7 @@ def run():
     print("Fetching FDA...")
     items = fetch_fda()
 
-    print("Fetching standards (ISO/DIN/EN/UL)...")
+    print("Fetching official standards sites (BSMI/CNS/ISO/IEC/ASTM/CEN/DIN/JIS/INTERTEK/ANSI)...")
     items += fetch_standards()
 
     print("Total:", len(items))
