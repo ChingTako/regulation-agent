@@ -94,6 +94,12 @@ OFFICIAL_SOURCES = [
         "homepage": "https://www.intertek.com/news/",
         "rss": [],
     },
+    {
+        "name": "INTERTEK INFORM",
+        "site": "intertekinform.com",
+        "homepage": "https://www.intertekinform.com/",
+        "rss": [],
+    },
 ]
 
 GOOGLE_SEARCH_TEMPLATE = "https://news.google.com/rss/search?q=site:{site}"
