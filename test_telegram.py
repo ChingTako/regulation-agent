@@ -1,7 +1,12 @@
+import os
 import requests
 
-BOT_TOKEN = "8958313466:AAE9tVCNlISwY6-3GsnyMFEiDvP35SENU4E"
-CHAT_ID = "8546764711"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+
+if not BOT_TOKEN or not CHAT_ID:
+    print("Set BOT_TOKEN and CHAT_ID environment variables to actually send a message. Exiting.")
+    exit(0)
 
 url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 

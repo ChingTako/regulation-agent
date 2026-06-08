@@ -34,7 +34,12 @@ def insert_regulation(title, url, source):
         conn.commit()
         return True
 
-    except:
+    except sqlite3.IntegrityError:
+        # URL already exists (unique constraint)
+        return False
+
+    except Exception as e:
+        print("DB insert failed:", e)
         return False
 
     finally:

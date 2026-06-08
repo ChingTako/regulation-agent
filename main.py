@@ -1,11 +1,10 @@
 import notifier.telegram as tg
 
 print("TELEGRAM FILE PATH:", tg.__file__)
-print("IMPORT:", send_telegram)
+print("IMPORT:", tg.send_telegram)
 from crawler.fda import fetch_fda
 from db.database import init_db, insert_regulation
 from utils.filter import match
-from notifier.telegram import send_telegram
 
 
 def process(items):
@@ -46,9 +45,12 @@ def process(items):
 
         print("SENDING TELEGRAM...")
 
-        send_telegram("🔥 FORCE TEST MESSAGE")
+        ok = tg.send_telegram("🔥 FORCE TEST MESSAGE")
 
-        print("SENT:", title)
+        if ok:
+            print("SENT:", title)
+        else:
+            print("SEND FAILED:", title)
 
 
 def run():
@@ -61,7 +63,7 @@ def run():
     print("Total:", len(items))
 
     # 🔥 如果你想「強制測試 Telegram」，取消下面這行註解
-    # send_telegram("TEST MESSAGE - SYSTEM IS WORKING")
+    # tg.send_telegram("TEST MESSAGE - SYSTEM IS WORKING")
 
     process(items)
 

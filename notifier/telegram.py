@@ -1,23 +1,28 @@
-print("FILE LOADED: notifier/telegram.py")
 import os
 import requests
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-CHAT_ID = os.environ["CHAT_ID"]
+def send_telegram(text, bot_token=None, chat_id=None):
+    """Send a text message to Telegram using BOT_TOKEN and CHAT_ID from
+    environment variables by default. Returns True on success.
+    """
 
-def send_telegram(text):
+    bot_token = bot_token or os.getenv("BOT_TOKEN")
+    chat_id = chat_id or os.getenv("CHAT_ID")
 
-    print("Telegram function called")
+    if not bot_token or not chat_id:
+        raise RuntimeError("BOT_TOKEN and CHAT_ID must be set in environment")
 
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
     r = requests.post(
         url,
         data={
-            "chat_id": CHAT_ID,
+            "chat_id": chat_id,
             "text": text
         }
     )
 
     print("STATUS:", r.status_code)
     print("RESPONSE:", r.text)
+
+    return r.ok
