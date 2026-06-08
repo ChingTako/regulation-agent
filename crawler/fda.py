@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 URL = "https://www.fda.gov/about-fda/fda-newsroom/rss.xml"
 
 
-def _is_recent(entry, days=365):
+def _is_recent(entry, days=1):
     published = entry.get("published_parsed") or entry.get("updated_parsed")
     if not published:
         return True
@@ -20,7 +20,7 @@ def fetch_fda():
     results = []
 
     for entry in feed.entries:
-        if not _is_recent(entry, days=365):
+        if not _is_recent(entry, days=1):
             continue
 
         summary = entry.get("summary", "") or entry.get("description", "")
