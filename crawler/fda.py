@@ -9,11 +9,13 @@ def fetch_fda():
     results = []
 
     for entry in feed.entries:
+        summary = entry.get("summary", "") or entry.get("description", "")
 
         results.append({
             "title": entry.title,
             "url": entry.link,
-            "source": "FDA"
+            "source": "FDA",
+            "summary": summary
         })
 
     return results

@@ -23,6 +23,10 @@ def send_telegram(text, bot_token=None, chat_id=None):
     )
 
     print("STATUS:", r.status_code)
-    print("RESPONSE:", r.text)
+    try:
+        payload = r.json()
+    except ValueError:
+        payload = r.text
+    print("RESPONSE:", payload)
 
     return r.ok

@@ -28,7 +28,7 @@ def process(items):
             continue
 
         # 🔥 DEBUG 2：DB insert
-        inserted = insert_regulation(title, url, source)
+        inserted = insert_regulation(title, url, source, item.get("summary", ""))
         print("INSERTED:", inserted)
 
         if not inserted:
@@ -36,6 +36,8 @@ def process(items):
             continue
 
         # 🚨 這裡才是 Telegram 發送點
+        summary = item.get("summary", "").strip()
+
         msg = f"""🚨 法規更新
 
 📌 {title}
@@ -43,9 +45,12 @@ def process(items):
 🔗 {url}
 """
 
+        if summary:
+            msg += f"\n📝 摘要：{summary}\n"
+
         print("SENDING TELEGRAM...")
 
-        ok = tg.send_telegram("🔥 FORCE TEST MESSAGE")
+        ok = tg.send_telegram(msg)
 
         if ok:
             print("SENT:", title)
