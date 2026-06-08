@@ -46,7 +46,7 @@ def process(items):
 
         print("SENDING TELEGRAM...")
 
-        send_telegram(msg)
+        send_telegram("🔥 FORCE TEST MESSAGE")
 
         print("SENT:", title)
 
