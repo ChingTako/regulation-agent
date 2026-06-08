@@ -99,7 +99,7 @@ def _compile_patterns(patterns):
             continue
 
         normalized = re.escape(normalized)
-        normalized = normalized.replace(r"\ ", r"\s+")
+        normalized = normalized.replace(r"\ ", r"[\s\-]*")
         compiled.append(re.compile(rf"\b{normalized}\b", re.IGNORECASE))
 
     return compiled
