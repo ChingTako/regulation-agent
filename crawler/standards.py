@@ -141,7 +141,7 @@ def _fetch_official_source(source):
     results = []
     for rss_url in rss_urls:
         for entry in _parse_feed(rss_url):
-            if not _is_recent(entry, days=365):
+            if not _is_recent(entry, days=548):
                 continue
 
             summary = entry.get("summary", "") or entry.get("description", "")
@@ -161,7 +161,7 @@ def _fetch_search_source(source):
     results = []
 
     for entry in getattr(feed, "entries", []):
-        if not _is_recent(entry, days=365):
+        if not _is_recent(entry, days=548):
             continue
 
         summary = entry.get("summary", "") or entry.get("description", "")
