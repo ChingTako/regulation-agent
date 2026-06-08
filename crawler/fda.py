@@ -1,5 +1,6 @@
 import feedparser
 from datetime import datetime, timezone, timedelta
+from utils.filter import match
 
 URL = "https://www.fda.gov/about-fda/fda-newsroom/rss.xml"
 
@@ -24,6 +25,9 @@ def fetch_fda():
             continue
 
         summary = entry.get("summary", "") or entry.get("description", "")
+        text = f"{entry.title} {summary}"
+        if not match(text):
+            continue
 
         results.append({
             "title": entry.title,

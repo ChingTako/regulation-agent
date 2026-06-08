@@ -2,6 +2,7 @@ import feedparser
 import re
 import requests
 from datetime import datetime, timezone, timedelta
+from utils.filter import match
 
 OFFICIAL_SOURCES = [
     {
@@ -151,6 +152,9 @@ def _fetch_official_source(source):
                 continue
 
             summary = entry.get("summary", "") or entry.get("description", "")
+            text = f"{entry.title} {summary}"
+            if not match(text):
+                continue
             results.append({
                 "title": entry.title,
                 "url": entry.link,
@@ -171,6 +175,9 @@ def _fetch_search_source(source):
             continue
 
         summary = entry.get("summary", "") or entry.get("description", "")
+        text = f"{entry.title} {summary}"
+        if not match(text):
+            continue
         results.append({
             "title": entry.title,
             "url": source["homepage"],
