@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 URL = "https://www.fda.gov/about-fda/fda-newsroom/rss.xml"
 
 
-def _is_recent(entry, days=180):
+def _is_recent(entry, days=365):
     published = entry.get("published_parsed") or entry.get("updated_parsed")
     if not published:
         return True

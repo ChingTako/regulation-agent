@@ -15,7 +15,7 @@ QUERIES = [
 ]
 
 
-def _is_recent(entry, days=180):
+def _is_recent(entry, days=365):
     published = entry.get("published_parsed") or entry.get("updated_parsed")
     if not published:
         return True
