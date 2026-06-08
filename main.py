@@ -9,6 +9,7 @@ from utils.filter import match
 
 
 def process(items):
+    new_count = 0
 
     for item in items:
 
@@ -23,7 +24,6 @@ def process(items):
         is_match = match(title)
         print("MATCH RESULT:", is_match)
 
-        # ⚠️ 暫時放寬：避免整個系統被 filter 卡死
         if not is_match:
             print("SKIP by match()")
             continue
@@ -55,8 +55,13 @@ def process(items):
 
         if ok:
             print("SENT:", title)
+            new_count += 1
         else:
             print("SEND FAILED:", title)
+
+    if new_count == 0:
+        print("NO NEW REGULATIONS FOUND, SENDING fallback message")
+        tg.send_telegram("今天沒有新的規範")
 
 
 def run():
