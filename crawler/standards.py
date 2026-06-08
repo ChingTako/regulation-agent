@@ -127,7 +127,7 @@ SEARCH_KEYWORDS_BY_SOURCE = {
 }
 
 
-def _is_recent(entry, days=1):
+def _is_recent(entry, days=90):
     published = entry.get("published_parsed") or entry.get("updated_parsed")
     if not published:
         return True
@@ -168,18 +168,19 @@ def _fetch_official_source(source):
     results = []
     for rss_url in rss_urls:
         for entry in _parse_feed(rss_url):
-            if not _is_recent(entry, days=548):
+            if not _is_recent(entry, days=90):
                 continue
 
             summary = entry.get("summary", "") or entry.get("description", "")
             text = f"{entry.title} {summary}"
-            if not match(text):
-                continue
             results.append({
                 "title": entry.title,
-                "url": entry.link,
+                "url": entry.get("link") or source["homepage"],
                 "source": source["name"],
                 "summary": summary,
+                "matched": match(text),
+                "force_send": True,
+                "is_official": True,
             })
 
     return results
@@ -246,18 +247,21 @@ def _fetch_search_source(source):
     results = []
 
     for entry in getattr(feed, "entries", []):
-        if not _is_recent(entry, days=548):
+        if not _is_recent(entry, days=90):
             continue
 
         summary = entry.get("summary", "") or entry.get("description", "")
         text = f"{entry.title} {summary}"
-        if not match(text):
+        matched = match(text)
+        if not matched:
             continue
         results.append({
             "title": entry.title,
             "url": entry.get("link") or source["homepage"],
             "source": source["name"],
             "summary": summary,
+            "matched": matched,
+            "force_send": False,
         })
 
     return results

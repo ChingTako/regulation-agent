@@ -9,7 +9,7 @@ FALLBACK_SEARCH_URL = "https://news.google.com/rss/search?q=" + urllib.parse.quo
 )
 
 
-def _is_recent(entry, days=548):
+def _is_recent(entry, days=90):
     published = entry.get("published_parsed") or entry.get("updated_parsed")
     if not published:
         return True
@@ -22,18 +22,22 @@ def fetch_fda():
     """Fetch FDA announcements from the official FDA Newsroom RSS feed."""
 
     feed = feedparser.parse(URL)
+    used_fallback = False
     if not getattr(feed, "entries", []):
         feed = feedparser.parse(FALLBACK_SEARCH_URL)
+        used_fallback = True
 
     results = []
 
     for entry in getattr(feed, "entries", []):
-        if not _is_recent(entry, days=548):
+        if not _is_recent(entry, days=90):
             continue
 
         summary = entry.get("summary", "") or entry.get("description", "")
         text = f"{entry.title} {summary}"
-        if not match(text):
+        matched = match(text)
+
+        if used_fallback and not matched:
             continue
 
         results.append({
@@ -41,6 +45,9 @@ def fetch_fda():
             "url": entry.get("link"),
             "source": "FDA",
             "summary": summary,
+            "matched": matched,
+            "force_send": not used_fallback,
+            "is_official": not used_fallback,
         })
 
     return results
