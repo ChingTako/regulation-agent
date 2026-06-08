@@ -109,15 +109,7 @@ STANDARD_REGEX = _compile_patterns(STANDARD_PATTERNS)
 
 
 def match(text):
-    """
-    Match text against standard patterns.
-    
-    For now, we relax the filter to allow all standards-related content
-    from official sources. This helps test the full pipeline with Google News.
-    """
     if not text:
         return False
 
-    # Temporarily allow all entries from official sources
-    # TODO: Fine-tune this filter based on what actually comes through
-    return True
+    return any(regex.search(text) for regex in STANDARD_REGEX)
