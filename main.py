@@ -3,6 +3,7 @@ import notifier.telegram as tg
 print("TELEGRAM FILE PATH:", tg.__file__)
 print("IMPORT:", tg.send_telegram)
 from crawler.fda import fetch_fda
+from crawler.standards import fetch_standards
 from db.database import init_db, insert_regulation
 from utils.filter import match
 
@@ -64,6 +65,9 @@ def run():
 
     print("Fetching FDA...")
     items = fetch_fda()
+
+    print("Fetching standards (ISO/DIN/EN/UL)...")
+    items += fetch_standards()
 
     print("Total:", len(items))
 
