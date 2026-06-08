@@ -20,7 +20,7 @@ def fetch_fda():
     results = []
 
     for entry in feed.entries:
-        if not _is_recent(entry, days=7):
+        if not _is_recent(entry, days=365):
             continue
 
         summary = entry.get("summary", "") or entry.get("description", "")
