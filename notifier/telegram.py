@@ -1,3 +1,4 @@
+print("FILE LOADED: notifier/telegram.py")
 import os
 import requests
 
