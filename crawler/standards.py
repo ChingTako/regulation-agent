@@ -1,8 +1,9 @@
 import feedparser
 import re
 import requests
+import urllib.parse
 from datetime import datetime, timezone, timedelta
-from utils.filter import match
+from utils.filter import match, STANDARD_PATTERNS
 
 OFFICIAL_SOURCES = [
     {
@@ -103,8 +104,27 @@ OFFICIAL_SOURCES = [
     },
 ]
 
-GOOGLE_SEARCH_TEMPLATE = "https://news.google.com/rss/search?q=site:{site}"
+GOOGLE_SEARCH_TEMPLATE = "https://news.google.com/rss/search?q={query}"
 REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0"}
+
+SEARCH_KEYWORDS_BY_SOURCE = {
+    "BSMI": ["CNS", "AS NZS", "AS", "NZS"],
+    "CNS": ["CNS", "AS NZS", "AS", "NZS"],
+    "ISO": ["ISO", "EN"],
+    "IEC": ["IEC", "ISO", "EN"],
+    "ASTM": ["ASTM"],
+    "CEN/CENELEC": ["EN", "BS EN"],
+    "DIN": ["DIN"],
+    "JIS": ["JIS"],
+    "ANSI": ["ANSI", "UL"],
+    "UL": ["UL"],
+    "RESNA": ["RESNA", "WC-1"],
+    "BSI": ["BS EN", "ISO", "EN"],
+    "AS": ["AS NZS", "AS", "NZS"],
+    "NZS": ["AS NZS", "AS", "NZS"],
+    "INTERTEK": ["ISO", "DIN", "UL", "ANSI", "RESNA", "EN", "JIS", "CNS", "AS"],
+    "INTERTEK INFORM": ["ISO", "DIN", "UL", "ANSI", "RESNA", "EN", "JIS", "CNS", "AS"],
+}
 
 
 def _is_recent(entry, days=1):
@@ -165,8 +185,63 @@ def _fetch_official_source(source):
     return results
 
 
+def _get_search_patterns(source):
+    name = source["name"]
+    if name in ("INTERTEK", "INTERTEK INFORM"):
+        return []
+    if name in ("BSMI", "CNS"):
+        return [p for p in STANDARD_PATTERNS if p.startswith("CNS") or p.startswith("AS NZS") or p.startswith("AS ") or p.startswith("NZS ")]
+    if name == "ISO":
+        return [p for p in STANDARD_PATTERNS if "ISO" in p or p.startswith("EN ") or p.startswith("BS EN ") or p.startswith("DS EN ")]
+    if name == "IEC":
+        return [p for p in STANDARD_PATTERNS if "IEC" in p or "ISO" in p or p.startswith("EN ") or p.startswith("BS EN ")]
+    if name == "CEN/CENELEC":
+        return [p for p in STANDARD_PATTERNS if p.startswith("EN ") or p.startswith("BS EN ") or p.startswith("DS EN ")]
+    if name == "DIN":
+        return [p for p in STANDARD_PATTERNS if p.startswith("DIN ")]
+    if name == "JIS":
+        return [p for p in STANDARD_PATTERNS if p.startswith("JIS ")]
+    if name == "ANSI":
+        return [p for p in STANDARD_PATTERNS if p.startswith("ANSI ")]
+    if name == "UL":
+        return [p for p in STANDARD_PATTERNS if p.startswith("UL ") or p.startswith("ANSI CAN UL ")]
+    if name == "RESNA":
+        return [p for p in STANDARD_PATTERNS if "RESNA" in p or "WC-1" in p]
+    if name == "BSI":
+        return [p for p in STANDARD_PATTERNS if p.startswith("BS EN ") or p.startswith("BS EN ISO ")]
+    if name in ("AS", "NZS"):
+        return [p for p in STANDARD_PATTERNS if p.startswith("AS ") or p.startswith("NZS ") or p.startswith("AS NZS")]
+    return []
+
+
+def _build_search_query(source):
+    patterns = _get_search_patterns(source)
+    if patterns:
+        quoted_terms = [f'"{term}"' if " " in term or "-" in term else term for term in patterns]
+        return f"site:{source['site']} " + " OR ".join(quoted_terms)
+
+    keywords = SEARCH_KEYWORDS_BY_SOURCE.get(source["name"], [])
+    if not keywords:
+        return f"site:{source['site']}"
+
+    quoted_terms = []
+    for term in keywords:
+        if " " in term or "-" in term:
+            quoted_terms.append(f'"{term}"')
+        else:
+            quoted_terms.append(term)
+
+    return f"site:{source['site']} " + " OR ".join(quoted_terms)
+
+
+def _build_search_url(source):
+    query = _build_search_query(source)
+    encoded = urllib.parse.quote(query, safe="")
+    return GOOGLE_SEARCH_TEMPLATE.format(query=encoded)
+
+
 def _fetch_search_source(source):
-    search_url = GOOGLE_SEARCH_TEMPLATE.format(site=source["site"])
+    search_url = _build_search_url(source)
     feed = feedparser.parse(search_url)
     results = []
 
@@ -180,7 +255,7 @@ def _fetch_search_source(source):
             continue
         results.append({
             "title": entry.title,
-            "url": source["homepage"],
+            "url": entry.get("link") or source["homepage"],
             "source": source["name"],
             "summary": summary,
         })

@@ -10,18 +10,34 @@ from utils.filter import match
 
 def process(items):
     new_count = 0
+    duplicate_count = 0
 
+    seen_urls = set()
+    unique_items = []
     for item in items:
+        url = item.get("url") or item.get("title")
+        if url in seen_urls:
+            duplicate_count += 1
+            continue
+        seen_urls.add(url)
+        unique_items.append(item)
 
+    candidate_count = len(unique_items)
+    print(f"CANDIDATES FOUND: {candidate_count}, DUPLICATES SKIPPED: {duplicate_count}")
+
+    for item in unique_items:
         title = item["title"]
         url = item["url"]
         source = item["source"]
+        summary = item.get("summary", "") or ""
 
         print("\n---")
         print("TITLE:", title)
+        print("SUMMARY:", summary[:120])
 
         # 🔥 DEBUG 1：先看 match 結果
-        is_match = match(title)
+        text = f"{title} {summary}"
+        is_match = match(text)
         print("MATCH RESULT:", is_match)
 
         if not is_match:
@@ -29,7 +45,7 @@ def process(items):
             continue
 
         # 🔥 DEBUG 2：DB insert
-        inserted = insert_regulation(title, url, source, item.get("summary", ""))
+        inserted = insert_regulation(title, url, source, summary)
         print("INSERTED:", inserted)
 
         if not inserted:
@@ -37,8 +53,6 @@ def process(items):
             continue
 
         # 🚨 這裡才是 Telegram 發送點
-        summary = item.get("summary", "").strip()
-
         msg = f"""🚨 法規更新
 
 📌 {title}
@@ -59,9 +73,13 @@ def process(items):
         else:
             print("SEND FAILED:", title)
 
-    if new_count == 0:
-        print("NO NEW REGULATIONS FOUND, SENDING fallback message")
+    print(f"SUMMARY: candidates={candidate_count}, sent={new_count}, duplicates={duplicate_count}")
+
+    if candidate_count == 0:
+        print("NO CANDIDATES, SENDING fallback message")
         tg.send_telegram("今天沒有新的規範")
+    elif new_count == 0:
+        print("FOUND candidates but no new alerts: all items already exist or insert failed")
 
 
 def run():
