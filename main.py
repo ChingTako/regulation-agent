@@ -1,3 +1,4 @@
+print("IMPORT:", send_telegram)
 from crawler.fda import fetch_fda
 from db.database import init_db, insert_regulation
 from utils.filter import match
