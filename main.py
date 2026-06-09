@@ -2,10 +2,8 @@ import notifier.telegram as tg
 
 print("TELEGRAM FILE PATH:", tg.__file__)
 print("IMPORT:", tg.send_telegram)
-from crawler.fda import fetch_fda
 from crawler.standards import fetch_standards
 from db.database import init_db, insert_regulation
-from utils.filter import match
 
 
 def process(items):
@@ -30,21 +28,26 @@ def process(items):
         url = item["url"]
         source = item["source"]
         summary = item.get("summary", "") or ""
+        force_send = item.get("force_send", False)
+        matched = item.get("matched", False)
+        is_official = item.get("is_official", False)
 
         print("\n---")
         print("TITLE:", title)
         print("SUMMARY:", summary[:120])
+        print("SOURCE:", source)
+        print("FORCE SEND:", force_send)
+        print("MATCHED:", matched)
+        print("OFFICIAL:", is_official)
 
-        # 🔥 DEBUG 1：先看 match 結果
-        text = f"{title} {summary}"
-        is_match = match(text)
-        print("MATCH RESULT:", is_match)
-
-        if not is_match:
+        if not matched and not force_send:
             print("SKIP by match()")
             continue
 
-        # 🔥 DEBUG 2：DB insert
+        alert_note = ""
+        if matched:
+            alert_note = "\n⚠️ 這則更新符合標籤，請特別注意！\n"
+
         inserted = insert_regulation(title, url, source, summary)
         print("INSERTED:", inserted)
 
@@ -52,13 +55,12 @@ def process(items):
             print("SKIP by DB (already exists or insert failed)")
             continue
 
-        # 🚨 這裡才是 Telegram 發送點
         msg = f"""🚨 法規更新
 
 📌 {title}
 🏛 {source}
 🔗 {url}
-"""
+{alert_note}"""
 
         if summary:
             msg += f"\n📝 摘要：{summary}\n"
@@ -86,11 +88,8 @@ def run():
 
     init_db()
 
-    print("Fetching FDA...")
-    items = fetch_fda()
-
-    print("Fetching official standards sites (BSMI/CNS/ISO/IEC/ASTM/CEN/DIN/JIS/INTERTEK/ANSI)...")
-    items += fetch_standards()
+    print("Fetching standard patterns globally from DuckDuckGo Search...")
+    items = fetch_standards()
 
     print("Total:", len(items))
 

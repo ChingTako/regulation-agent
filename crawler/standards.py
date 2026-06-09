@@ -1,282 +1,61 @@
-import feedparser
-import re
-import requests
-import urllib.parse
-from datetime import datetime, timezone, timedelta
+import time
+from duckduckgo_search import DDGS
 from utils.filter import match, STANDARD_PATTERNS
 
-OFFICIAL_SOURCES = [
-    {
-        "name": "BSMI",
-        "site": "bsmi.gov.tw",
-        "homepage": "https://www.bsmi.gov.tw/",
-        "rss": [],
-    },
-    {
-        "name": "CNS",
-        "site": "bsmi.gov.tw",
-        "homepage": "https://www.bsmi.gov.tw/",
-        "rss": [],
-    },
-    {
-        "name": "ISO",
-        "site": "iso.org",
-        "homepage": "https://www.iso.org/news.html",
-        "rss": [],
-    },
-    {
-        "name": "IEC",
-        "site": "iec.ch",
-        "homepage": "https://www.iec.ch/news-events/news/",
-        "rss": [],
-    },
-    {
-        "name": "ASTM",
-        "site": "astm.org",
-        "homepage": "https://www.astm.org/news/",
-        "rss": [],
-    },
-    {
-        "name": "CEN/CENELEC",
-        "site": "cencenelec.eu",
-        "homepage": "https://www.cencenelec.eu/news/",
-        "rss": [],
-    },
-    {
-        "name": "DIN",
-        "site": "din.de",
-        "homepage": "https://www.din.de/en",
-        "rss": [],
-    },
-    {
-        "name": "JIS",
-        "site": "jisc.go.jp",
-        "homepage": "https://www.jisc.go.jp/en/",
-        "rss": [],
-    },
-    {
-        "name": "ANSI",
-        "site": "ansi.org",
-        "homepage": "https://www.ansi.org/news_publications/news",
-        "rss": [],
-    },
-    {
-        "name": "UL",
-        "site": "ul.com",
-        "homepage": "https://www.ul.com/news",
-        "rss": [],
-    },
-    {
-        "name": "RESNA",
-        "site": "resna.org",
-        "homepage": "https://www.resna.org/news",
-        "rss": [],
-    },
-    {
-        "name": "BSI",
-        "site": "bsigroup.com",
-        "homepage": "https://www.bsigroup.com/en-GB/about-bsi/media-centre/press-releases/",
-        "rss": [],
-    },
-    {
-        "name": "AS",
-        "site": "standards.org.au",
-        "homepage": "https://www.standards.org.au/news",
-        "rss": ["https://www.standards.org.au/news/rss.xml"],
-    },
-    {
-        "name": "NZS",
-        "site": "standards.govt.nz",
-        "homepage": "https://www.standards.govt.nz/",
-        "rss": [],
-    },
-    {
-        "name": "INTERTEK",
-        "site": "intertek.com",
-        "homepage": "https://www.intertek.com/news/",
-        "rss": [],
-    },
-    {
-        "name": "INTERTEK INFORM",
-        "site": "intertekinform.com",
-        "homepage": "https://www.intertekinform.com/",
-        "rss": [],
-    },
-]
-
-GOOGLE_SEARCH_TEMPLATE = "https://news.google.com/rss/search?q={query}"
-REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0"}
-
-SEARCH_KEYWORDS_BY_SOURCE = {
-    "BSMI": ["CNS", "AS NZS", "AS", "NZS"],
-    "CNS": ["CNS", "AS NZS", "AS", "NZS"],
-    "ISO": ["ISO", "EN"],
-    "IEC": ["IEC", "ISO", "EN"],
-    "ASTM": ["ASTM"],
-    "CEN/CENELEC": ["EN", "BS EN"],
-    "DIN": ["DIN"],
-    "JIS": ["JIS"],
-    "ANSI": ["ANSI", "UL"],
-    "UL": ["UL"],
-    "RESNA": ["RESNA", "WC-1"],
-    "BSI": ["BS EN", "ISO", "EN"],
-    "AS": ["AS NZS", "AS", "NZS"],
-    "NZS": ["AS NZS", "AS", "NZS"],
-    "INTERTEK": ["ISO", "DIN", "UL", "ANSI", "RESNA", "EN", "JIS", "CNS", "AS"],
-    "INTERTEK INFORM": ["ISO", "DIN", "UL", "ANSI", "RESNA", "EN", "JIS", "CNS", "AS"],
-}
-
-
-def _is_recent(entry, days=90):
-    published = entry.get("published_parsed") or entry.get("updated_parsed")
-    if not published:
-        return True
-
-    published_dt = datetime(*published[:6], tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - published_dt <= timedelta(days=days)
-
-
-def _discover_rss_links(page_url):
-    try:
-        r = requests.get(page_url, headers=REQUEST_HEADERS, timeout=10)
-        if r.status_code != 200:
-            return []
-
-        text = r.text
-        links = re.findall(r'<link[^>]+type=["\'](?:application/rss\+xml|application/atom\+xml)["\'][^>]*>', text, re.IGNORECASE)
-        rss_urls = []
-        for link in links:
-            hrefs = re.findall(r'href=["\']([^"\']+)["\']', link, re.IGNORECASE)
-            if hrefs:
-                rss_urls.append(hrefs[0])
-
-        return [u if u.startswith("http") else requests.compat.urljoin(page_url, u) for u in rss_urls]
-    except requests.RequestException:
-        return []
-
-
-def _parse_feed(feed_url):
-    feed = feedparser.parse(feed_url)
-    return getattr(feed, "entries", []) or []
-
-
-def _fetch_official_source(source):
-    rss_urls = list(source.get("rss", []))
-    if not rss_urls:
-        rss_urls = _discover_rss_links(source["homepage"])
-
+def _fetch_patterns_from_ddg():
     results = []
-    for rss_url in rss_urls:
-        for entry in _parse_feed(rss_url):
-            if not _is_recent(entry, days=90):
-                continue
-
-            summary = entry.get("summary", "") or entry.get("description", "")
-            text = f"{entry.title} {summary}"
-            results.append({
-                "title": entry.title,
-                "url": entry.get("link") or source["homepage"],
-                "source": source["name"],
-                "summary": summary,
-                "matched": match(text),
-                "force_send": True,
-                "is_official": True,
-            })
-
+    
+    # 每次搜尋 3 個標籤，避免搜尋字串過長影響精準度
+    chunk_size = 3
+    
+    with DDGS() as ddgs:
+        for i in range(0, len(STANDARD_PATTERNS), chunk_size):
+            chunk = STANDARD_PATTERNS[i:i + chunk_size]
+            
+            # 建構搜尋語句: "Pattern 1" OR "Pattern 2"
+            quoted_terms = [f'"{term}"' for term in chunk]
+            query = " OR ".join(quoted_terms)
+            
+            print(f"Fetching DuckDuckGo for tags: {chunk}")
+            
+            try:
+                # timelimit="y" 代表搜尋過去一年內的結果，剛好涵蓋你想要的歷史範圍
+                # max_results=15 代表我們只看這組搜尋結果的前 15 筆（最相關的）
+                ddgs_results = ddgs.text(query, timelimit="y", max_results=15)
+                
+                if not ddgs_results:
+                    continue
+                    
+                for r in ddgs_results:
+                    title = r.get('title', '')
+                    url = r.get('href', '')
+                    body = r.get('body', '')
+                    
+                    # 將標題與摘要合併，交給你的過濾器判斷是否真的有命中標籤
+                    text = f"{title} {body}"
+                    matched = match(text)
+                    
+                    if not matched:
+                        continue
+                        
+                    results.append({
+                        "title": title,
+                        "url": url,
+                        "source": "DuckDuckGo Web Search",
+                        "summary": body,
+                        "matched": matched,
+                        "force_send": False,
+                        "is_official": False,
+                    })
+            except Exception as e:
+                print(f"Error fetching {query}: {e}")
+                
+            # 每次搜尋後暫停 2 秒，避免被 DuckDuckGo 當作惡意攻擊而封鎖
+            time.sleep(2)
+            
     return results
-
-
-def _get_search_patterns(source):
-    name = source["name"]
-    if name in ("INTERTEK", "INTERTEK INFORM"):
-        return []
-    if name in ("BSMI", "CNS"):
-        return [p for p in STANDARD_PATTERNS if p.startswith("CNS") or p.startswith("AS NZS") or p.startswith("AS ") or p.startswith("NZS ")]
-    if name == "ISO":
-        return [p for p in STANDARD_PATTERNS if "ISO" in p or p.startswith("EN ") or p.startswith("BS EN ") or p.startswith("DS EN ")]
-    if name == "IEC":
-        return [p for p in STANDARD_PATTERNS if "IEC" in p or "ISO" in p or p.startswith("EN ") or p.startswith("BS EN ")]
-    if name == "CEN/CENELEC":
-        return [p for p in STANDARD_PATTERNS if p.startswith("EN ") or p.startswith("BS EN ") or p.startswith("DS EN ")]
-    if name == "DIN":
-        return [p for p in STANDARD_PATTERNS if p.startswith("DIN ")]
-    if name == "JIS":
-        return [p for p in STANDARD_PATTERNS if p.startswith("JIS ")]
-    if name == "ANSI":
-        return [p for p in STANDARD_PATTERNS if p.startswith("ANSI ")]
-    if name == "UL":
-        return [p for p in STANDARD_PATTERNS if p.startswith("UL ") or p.startswith("ANSI CAN UL ")]
-    if name == "RESNA":
-        return [p for p in STANDARD_PATTERNS if "RESNA" in p or "WC-1" in p]
-    if name == "BSI":
-        return [p for p in STANDARD_PATTERNS if p.startswith("BS EN ") or p.startswith("BS EN ISO ")]
-    if name in ("AS", "NZS"):
-        return [p for p in STANDARD_PATTERNS if p.startswith("AS ") or p.startswith("NZS ") or p.startswith("AS NZS")]
-    return []
-
-
-def _build_search_query(source):
-    patterns = _get_search_patterns(source)
-    if patterns:
-        quoted_terms = [f'"{term}"' if " " in term or "-" in term else term for term in patterns]
-        return f"site:{source['site']} " + " OR ".join(quoted_terms)
-
-    keywords = SEARCH_KEYWORDS_BY_SOURCE.get(source["name"], [])
-    if not keywords:
-        return f"site:{source['site']}"
-
-    quoted_terms = []
-    for term in keywords:
-        if " " in term or "-" in term:
-            quoted_terms.append(f'"{term}"')
-        else:
-            quoted_terms.append(term)
-
-    return f"site:{source['site']} " + " OR ".join(quoted_terms)
-
-
-def _build_search_url(source):
-    query = _build_search_query(source)
-    encoded = urllib.parse.quote(query, safe="")
-    return GOOGLE_SEARCH_TEMPLATE.format(query=encoded)
-
-
-def _fetch_search_source(source):
-    search_url = _build_search_url(source)
-    feed = feedparser.parse(search_url)
-    results = []
-
-    for entry in getattr(feed, "entries", []):
-        if not _is_recent(entry, days=90):
-            continue
-
-        summary = entry.get("summary", "") or entry.get("description", "")
-        text = f"{entry.title} {summary}"
-        matched = match(text)
-        if not matched:
-            continue
-        results.append({
-            "title": entry.title,
-            "url": entry.get("link") or source["homepage"],
-            "source": source["name"],
-            "summary": summary,
-            "matched": matched,
-            "force_send": False,
-        })
-
-    return results
-
 
 def fetch_standards():
-    """Fetch recent news items from official standards organization domains."""
-
-    results = []
-    for source in OFFICIAL_SOURCES:
-        official_results = _fetch_official_source(source)
-        if official_results:
-            results.extend(official_results)
-            continue
-
-        results.extend(_fetch_search_source(source))
-
-    return results
+    """Fetch recent standard updates using global search engine."""
+    print("Fetching standards updates from DuckDuckGo...")
+    return _fetch_patterns_from_ddg()
